@@ -17,6 +17,7 @@
 #include <string.h>
 
 #include "db.h"
+#include "lex.h"
 
 /* Runs main CLI getting the line buffer */
 static void rSQL_runConsole(void) {
@@ -29,7 +30,21 @@ static void rSQL_runConsole(void) {
 }
 
 int main(int argc, char **argv) {
+    struct lexer_t lexer;
+    const char *test_input = "CREATE TABLE users (id >= 10 AND name != 'test');";
     
+    lexInitialize(&lexer, test_input);
+    
+    printf("Tokenizing: %s\n\n", test_input);
+    
+    do {
+        lexNextToken(&lexer);
+        printf("Token: %-15s Type: %s\n", 
+               lexer.current_token.text, 
+               lexGetTokenTypeName(lexer.current_token.type));
+    } while (lexer.current_token.type != RSQL_EOF);
+    
+    return 0;
 
     while (1) {
         rSQL_runConsole();

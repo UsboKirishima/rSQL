@@ -21,17 +21,20 @@ void dbReleaseTables(struct database_t *db);
 
 struct ctx_t *dbCreateCtx(void) {
     struct ctx_t *context = malloc(sizeof(struct ctx_t));
-    if (!context) return NULL;
+    if (!context)
+        return NULL;
     context->database_count = 0;
     memset(context->databases, 0, sizeof(context->databases));
     return context;
 }
 
 struct database_t *dbCreateNew(struct ctx_t *ctx, const char db_name[64]) {
-    if (ctx->database_count >= MAX_DB_NUM) return NULL;
+    if (ctx->database_count >= MAX_DB_NUM)
+        return NULL;
 
     struct database_t *new_db = malloc(sizeof(struct database_t));
-    if (!new_db) return NULL;
+    if (!new_db)
+        return NULL;
 
     memset(new_db, 0, sizeof(struct database_t));
     strncpy(new_db->name, db_name, 63);
@@ -43,7 +46,8 @@ struct database_t *dbCreateNew(struct ctx_t *ctx, const char db_name[64]) {
 }
 
 void dbReleaseColumns(struct table_t *table) {
-    if (!table) return;
+    if (!table)
+        return;
 
     for (size_t i = 0; i < table->column_count; i++) {
         if (table->columns[i]) {
@@ -56,11 +60,13 @@ void dbReleaseColumns(struct table_t *table) {
 }
 
 void dbReleaseRows(struct table_t *table) {
-    if (!table) return;
+    if (!table)
+        return;
 
     for (size_t i = 0; i < table->row_count; i++) {
         struct row_t *row = table->rows[i];
-        if (!row) continue;
+        if (!row)
+            continue;
 
         for (size_t c = 0; c < table->column_count; c++) {
             if (row->cells[c]) {
@@ -77,11 +83,13 @@ void dbReleaseRows(struct table_t *table) {
 }
 
 void dbReleaseTables(struct database_t *db) {
-    if (!db) return;
+    if (!db)
+        return;
 
     for (size_t i = 0; i < db->table_count; i++) {
         struct table_t *table = db->tables[i];
-        if (!table) continue;
+        if (!table)
+            continue;
 
         dbReleaseColumns(table);
         dbReleaseRows(table);
@@ -93,7 +101,8 @@ void dbReleaseTables(struct database_t *db) {
 }
 
 int dbDelete(struct ctx_t *ctx, struct database_t *db) {
-    if (!ctx || !db) return 0;
+    if (!ctx || !db)
+        return 0;
 
     size_t idx = MAX_DB_NUM;
     for (size_t i = 0; i < ctx->database_count; i++) {
@@ -103,7 +112,8 @@ int dbDelete(struct ctx_t *ctx, struct database_t *db) {
         }
     }
 
-    if (idx == MAX_DB_NUM) return 0;
+    if (idx == MAX_DB_NUM)
+        return 0;
 
     dbReleaseTables(db);
     free(db);
@@ -118,10 +128,12 @@ int dbDelete(struct ctx_t *ctx, struct database_t *db) {
 }
 
 struct table_t *dbTableNew(struct database_t *db, const char table_name[64]) {
-    if (db->table_count >= MAX_TABLE_NUM) return NULL;
+    if (db->table_count >= MAX_TABLE_NUM)
+        return NULL;
 
     struct table_t *new_table = malloc(sizeof(struct table_t));
-    if (!new_table) return NULL;
+    if (!new_table)
+        return NULL;
 
     memset(new_table, 0, sizeof(struct table_t));
     strncpy(new_table->name, table_name, 63);
@@ -133,7 +145,8 @@ struct table_t *dbTableNew(struct database_t *db, const char table_name[64]) {
 }
 
 int dbTableDelete(struct database_t *db, struct table_t *table) {
-    if (!db || !table) return 0;
+    if (!db || !table)
+        return 0;
 
     size_t idx = MAX_TABLE_NUM;
     for (size_t i = 0; i < db->table_count; i++) {
@@ -143,7 +156,8 @@ int dbTableDelete(struct database_t *db, struct table_t *table) {
         }
     }
 
-    if (idx == MAX_TABLE_NUM) return 0;
+    if (idx == MAX_TABLE_NUM)
+        return 0;
 
     dbReleaseColumns(table);
     dbReleaseRows(table);
@@ -158,12 +172,15 @@ int dbTableDelete(struct database_t *db, struct table_t *table) {
     return 1;
 }
 
-struct column_t *dbColumnCreate(struct table_t *table, const char col_name[64], 
-    int col_type, const int constraints[MAX_CONSTRAINTS_NUM]) {
-    if (table->column_count >= MAX_COLUMNS_NUM) return NULL;
+struct column_t *dbColumnCreate(struct table_t *table, const char col_name[64],
+                                int col_type,
+                                const int constraints[MAX_CONSTRAINTS_NUM]) {
+    if (table->column_count >= MAX_COLUMNS_NUM)
+        return NULL;
 
     struct column_t *new_col = malloc(sizeof(struct column_t));
-    if (!new_col) return NULL;
+    if (!new_col)
+        return NULL;
 
     memset(new_col, 0, sizeof(struct column_t));
     strncpy(new_col->name, col_name, 63);
@@ -171,7 +188,8 @@ struct column_t *dbColumnCreate(struct table_t *table, const char col_name[64],
     new_col->type = col_type;
 
     if (constraints) {
-        memcpy(new_col->constraints, constraints, sizeof(int) * MAX_CONSTRAINTS_NUM);
+        memcpy(new_col->constraints, constraints,
+               sizeof(int) * MAX_CONSTRAINTS_NUM);
     } else {
         memset(new_col->constraints, 0, sizeof(int) * MAX_CONSTRAINTS_NUM);
     }
@@ -182,7 +200,8 @@ struct column_t *dbColumnCreate(struct table_t *table, const char col_name[64],
 }
 
 int dbColumnDelete(struct table_t *table, struct column_t *col) {
-    if (!table || !col) return 0;
+    if (!table || !col)
+        return 0;
 
     size_t idx = MAX_COLUMNS_NUM;
     for (size_t i = 0; i < table->column_count; i++) {
@@ -192,7 +211,8 @@ int dbColumnDelete(struct table_t *table, struct column_t *col) {
         }
     }
 
-    if (idx == MAX_COLUMNS_NUM) return 0;
+    if (idx == MAX_COLUMNS_NUM)
+        return 0;
 
     free(col);
 
@@ -206,10 +226,12 @@ int dbColumnDelete(struct table_t *table, struct column_t *col) {
 }
 
 struct row_t *dbRowNew(struct table_t *table) {
-    if (!table || table->row_count >= MAX_ROWS_NUM) return NULL;
+    if (!table || table->row_count >= MAX_ROWS_NUM)
+        return NULL;
 
     struct row_t *new_row = malloc(sizeof(struct row_t));
-    if (!new_row) return NULL;
+    if (!new_row)
+        return NULL;
 
     memset(new_row, 0, sizeof(struct row_t));
 
@@ -234,7 +256,8 @@ struct row_t *dbRowNew(struct table_t *table) {
 }
 
 int dbRowDelete(struct table_t *table, struct row_t *row) {
-    if (!table || !row) return 0;
+    if (!table || !row)
+        return 0;
 
     size_t idx = MAX_ROWS_NUM;
     for (size_t i = 0; i < table->row_count; i++) {
@@ -244,7 +267,8 @@ int dbRowDelete(struct table_t *table, struct row_t *row) {
         }
     }
 
-    if (idx == MAX_ROWS_NUM) return 0;
+    if (idx == MAX_ROWS_NUM)
+        return 0;
     for (size_t c = 0; c < table->column_count; c++) {
         if (row->cells[c]) {
             free(row->cells[c]);
