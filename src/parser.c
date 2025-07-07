@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include "parser.h"
 #include "db.h"
 #include "lex.h"
 #include "logs.h"
@@ -20,55 +21,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-/* AST Node Types */
-enum ast_node_type_t {
-    AST_STATEMENT,
-    AST_CREATE_TABLE,
-    AST_DROP_TABLE,
-    AST_SELECT,
-    AST_INSERT,
-    AST_UPDATE,
-    AST_DELETE,
-    AST_IDENTIFIER,
-    AST_COLUMN_LIST,
-    AST_COLUMN_DEF,
-    AST_WHERE_CLAUSE,
-    AST_EXPRESSION,
-    AST_BINARY_OP,
-    AST_LITERAL,
-    AST_TABLE_REF
-};
-
-/* AST Node Structure is a node used by parser to rapresent the
- * flow of code. */
-struct ast_node_t {
-    /* node type is another identifier to rapresent a keyword
-     * or another syntactical operator */
-    enum ast_node_type_t type;
-
-    /* different from the type, the value is the real token
-     * rapresented in string */
-    char *value;
-
-    /* Children are all the nodes after the triggered value
-     * for example if we get "CREATE TABLE tb_name;":
-     * CREATE TABLE                 (root node)
-     *      IDENTIFIER: tb_name     (child) */
-    struct ast_node_t **children;
-    size_t child_count;
-
-    /* Child capacity is the maximium recursive limit,
-     * for example if we still have "CREATE TABLE tb_name;"
-     * the child_capacity will be 1 */
-    size_t child_capacity;
-};
-
-struct parser_t {
-    struct lexer_t *lexer;
-    int has_error;
-    char error_message[256];
-};
 
 struct ctx_t *__ctx = NULL;
 
@@ -104,6 +56,8 @@ void astAddChild(struct ast_node_t *restrict parent,
             realloc(parent->children,
                     parent->child_capacity * sizeof(struct ast_node_t));
     }
+
+    parent->children[parent->child_count++] = child;
 }
 
 /* Recursively release a node and its children */
@@ -151,9 +105,10 @@ int parserConsume(struct parser_t *parser, int expected_type) {
 /* prototypes */
 struct ast_node_t *parseIndentifier(struct parser_t *parser);
 struct ast_node_t *parseColumnDef(struct parser_t *parser);
+struct ast_node_t *parseColumnDef(struct parser_t *parser);
 
 struct ast_node_t *parseIndentifier(struct parser_t *parser) {
-    if (parserExpect(parser, RSQL_IDENTIFIER))
+    if (!parserExpect(parser, RSQL_IDENTIFIER))
         return NULL;
 
     struct ast_node_t *node =
@@ -175,9 +130,294 @@ struct ast_node_t *parseColumnDef(struct parser_t *parser) {
         astAddChild(col_def, type);
     }
 
+    return col_def;
+
 cleanup:
     astFreeNode(col_def);
     return NULL;
+}
+
+struct ast_node_t *parseColumnList(struct parser_t *parser) {
+    struct ast_node_t *list = astCreateNode(AST_COLUMN_LIST, NULL);
+
+    if (!parserConsume(parser, RSQL_LPAREN))
+        goto cleanup;
+
+    struct ast_node_t *col = parseColumnDef(parser);
+    if (!col)
+        goto cleanup;
+    astAddChild(list, col);
+
+    while (lexIsToken(parser->lexer, RSQL_COMMA)) {
+        lexNextToken(parser->lexer);
+
+        col = parseColumnDef(parser);
+        if (!col)
+            goto cleanup;
+        astAddChild(list, col);
+    }
+
+    if (!parserConsume(parser, RSQL_RPAREN))
+        goto cleanup;
+
+    return list;
+
+cleanup:
+    astFreeNode(list);
+    return NULL;
+}
+
+/* Parse expressions and operators
+ * TODO: add operators, functions, literals ...*/
+struct ast_node_t *parseExpression(struct parser_t *parser) {
+    if (lexIsToken(parser->lexer, RSQL_IDENTIFIER)) {
+        return parseIndentifier(parser);
+    }
+
+    parserError(parser, "Expected expression");
+    return NULL;
+}
+
+/* WHERE
+ * =====
+ * The statement 'WHERE' syntax is:
+ *      WHERE id = 5
+ *      WHERE name LIKE 'John%' */
+struct ast_node_t *parseWhereClause(struct parser_t *parser) {
+
+    /* chekc if there is WHERE clause (because It's optional) */
+    if (!lexIsToken(parser->lexer, WHERE_KW))
+        return NULL;
+
+    struct ast_node_t *where_node = astCreateNode(AST_WHERE_CLAUSE, NULL);
+    lexNextToken(parser->lexer); /* consume WHERE */
+
+    struct ast_node_t *condition = parseExpression(parser);
+    if (!condition)
+        goto cleanup;
+    astAddChild(where_node, condition);
+
+    return where_node;
+
+cleanup:
+    free(where_node);
+    return NULL;
+}
+
+/* Table creation parser e.g. 'CREATE TABLE tb_name (id INT, name TEXT);' */
+struct ast_node_t *parseCreateTable(struct parser_t *parser) {
+    struct ast_node_t *create_node = astCreateNode(AST_CREATE_TABLE, NULL);
+
+    /* Keyword 'CREATE' is already consumed from caller,
+     * so consume the keyword 'TABLE' */
+    if (!parserConsume(parser, TABLE_KW))
+        goto cleanup;
+
+    /* Parse table identifier 'CREATE TABLE <identifier> ...' */
+    struct ast_node_t *table_name = parseIndentifier(parser);
+    if (!table_name)
+        goto cleanup;
+    astAddChild(create_node, table_name);
+
+    /* Parse column list 'CREATE TABLE name (id INT, name VARCHAR);' */
+    struct ast_node_t *columns = parseColumnList(parser);
+    if (!columns)
+        goto cleanup;
+    astAddChild(create_node, columns);
+
+    return create_node;
+
+cleanup:
+    astFreeNode(create_node);
+    return NULL;
+}
+
+/* Table deletion e.g. 'DROP TABLE animals;' */
+struct ast_node_t *parseDropTable(struct parser_t *parser) {
+    struct ast_node_t *drop_node = astCreateNode(AST_DROP_TABLE, NULL);
+
+    /* Consume keyword 'TABLE' after 'DROP' */
+    if (!parserConsume(parser, TABLE_KW))
+        goto cleanup;
+
+    /* Parse table name 'DROP TABLE <table_name>;' */
+    struct ast_node_t *table_name = parseIndentifier(parser);
+    if (!table_name)
+        goto cleanup;
+    astAddChild(drop_node, table_name);
+
+    return drop_node;
+
+cleanup:
+    astFreeNode(drop_node);
+    return NULL;
+}
+
+/* Select statement
+ * ================
+ * The 'SELECT' syntax based on MySQL standard:
+ *
+ *      SELECT column1, column2 FROM table_or_view WHERE <condition>;
+ *
+ *  SELECT: Keyword to get data from a table or a view
+ *  COLUMNS: column list or '*' (All)
+ *  FROM: Keyword to select the source of data
+ *  SRC: table or view
+ *  WHERE: Keyword that imposes a condition
+ *  CONDITION: an expression */
+struct ast_node_t *parseSelect(struct parser_t *parser) {
+    struct ast_node_t *select_node = astCreateNode(AST_SELECT, NULL);
+
+    /* Keyword 'SELECT' is already consumed by caller so
+     * we need to start with column list or wildcard * */
+    if (lexIsToken(parser->lexer, RSQL_MUL_OP)) {
+        /* in case of wildcard 'SELECT *' */
+        struct ast_node_t *all_cols = astCreateNode(AST_LITERAL, "*");
+        astAddChild(select_node, all_cols);
+        lexNextToken(parser->lexer);
+    } else {
+        /* in case 'SELECT column1, column2' parse the first column */
+        struct ast_node_t *col = parseIndentifier(parser);
+        if (!col)
+            goto cleanup;
+        astAddChild(select_node, col);
+
+        /* parse the additional columns */
+        while (lexIsToken(parser->lexer, RSQL_COMMA)) {
+            lexNextToken(parser->lexer); /* Consume comma ',' */
+            col = parseIndentifier(parser);
+            if (!col)
+                goto cleanup;
+            astAddChild(select_node, col);
+        }
+    }
+
+    /* parse the clause FROM (required) */
+    if (!parserConsume(parser, FROM_KW))
+        goto cleanup;
+
+    /* parse table or view name  */
+    struct ast_node_t *table_name = parseIndentifier(parser);
+    if (!table_name)
+        goto cleanup;
+    astAddChild(select_node, table_name);
+
+    /* parse the clause WHERE (optional) */
+    struct ast_node_t *where_clause = parseWhereClause(parser);
+    if (where_clause)
+        astAddChild(select_node, where_clause);
+
+    return select_node;
+cleanup:
+    astFreeNode(select_node);
+    return NULL;
+}
+
+/* Parse a full SQL statement */
+struct ast_node_t *parseStatement(struct parser_t *parser) {
+    if (parser->has_error)
+        return NULL;
+
+    switch (lexGetTokenType(parser->lexer)) {
+    case CREATE_KW:
+        lexNextToken(parser->lexer);
+        return parseCreateTable(parser);
+
+    case DROP_KW:
+        lexNextToken(parser->lexer);
+        return parseDropTable(parser);
+
+    case SELECT_KW:
+        lexNextToken(parser->lexer);
+        return parseSelect(parser);
+
+    default:
+        parserError(parser, "Unexpected token");
+        return parseSelect(parser);
+    }
+}
+
+/* Create a new parser instance */
+struct parser_t *parserCreate(struct lexer_t *lexer) {
+    struct parser_t *parser = malloc(sizeof(struct parser_t));
+    if (!parser)
+        return NULL;
+
+    parser->lexer = lexer;
+    parser->has_error = 0;
+    parser->error_message[0] = '\0';
+
+    return parser;
+}
+
+/* Release parser memory */
+void parserFree(struct parser_t *parser) {
+    if (parser)
+        free(parser);
+}
+
+/* Main function that gets the first token, parse the statement and
+ * check if at the end a semicolon in present */
+struct ast_node_t *parserParse(struct parser_t *parser) {
+    lexNextToken(parser->lexer);
+
+    struct ast_node_t *root = parseStatement(parser);
+
+    if (root && !lexIsEOF(parser->lexer)) {
+        /* Semicolon verification at the end of file */
+        if (!parserConsume(parser, RSQL_SEMICOLON)) {
+            astFreeNode(root);
+            return NULL;
+        }
+    }
+
+    return root;
+}
+
+const char *parserGetError(struct parser_t *parser) {
+    return parser->has_error ? parser->error_message : NULL;
+}
+
+void astPrintNode(struct ast_node_t *node, int indent) {
+    if (!node)
+        return;
+
+    for (int i = 0; i < indent; i++)
+        printf("  ");
+
+    switch (node->type) {
+    case AST_CREATE_TABLE:
+        printf("CREATE TABLE\n");
+        break;
+    case AST_DROP_TABLE:
+        printf("DROP TABLE\n");
+        break;
+    case AST_SELECT:
+        printf("SELECT\n");
+        break;
+    case AST_IDENTIFIER:
+        printf("IDENTIFIER: %s\n", node->value ? node->value : "NULL");
+        break;
+    case AST_COLUMN_LIST:
+        printf("COLUMN LIST\n");
+        break;
+    case AST_COLUMN_DEF:
+        printf("COLUMN DEF\n");
+        break;
+    case AST_WHERE_CLAUSE:
+        printf("WHERE CLAUSE\n");
+        break;
+    case AST_LITERAL:
+        printf("LITERAL: %s\n", node->value ? node->value : "NULL");
+        break;
+    default:
+        printf("UNKNOWN NODE\n");
+        break;
+    }
+
+    for (size_t i = 0; i < node->child_count; i++) {
+        astPrintNode(node->children[i], indent + 1);
+    }
 }
 
 /* This function is used to check if the global context variable
