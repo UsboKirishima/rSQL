@@ -147,7 +147,7 @@ void lexParseNumber(struct lexer_t *lexer) {
 }
 
 void lexParseString(struct lexer_t *lexer) {
-    lexer->pos++; // Skip initial quote
+    lexer->pos++; /* Skip initial quote */
     size_t start = lexer->pos;
 
     while (lexer->input[lexer->pos] != '\0' &&
@@ -165,9 +165,9 @@ void lexParseString(struct lexer_t *lexer) {
     lexer->current_token.type = RSQL_STRING_LITERAL;
 
     if (lexer->input[lexer->pos] == '\'') {
-        lexer->pos++; // Skip closing quote
+        lexer->pos++; /* Skip closing quote */
     } else {
-        // Unterminated string — could set RSQL_UNKNOWN or flag an error
+        /* Unterminated string — could set RSQL_UNKNOWN or flag an error */
     }
 }
 
@@ -282,24 +282,3 @@ const char *lexGetTokenTypeName(int type) {
         return "UNKNOWN_TYPE";
     }
 }
-
-/* Example usage and test function */
-#ifdef TEST_LEXER
-int main() {
-    struct lexer_t lexer;
-    const char *test_input =
-        "CREATE TABLE users (id >= 10 AND name != 'test');";
-
-    lexInitialize(&lexer, test_input);
-
-    printf("Tokenizing: %s\n\n", test_input);
-
-    do {
-        lexNextToken(&lexer);
-        printf("Token: %-15s Type: %s\n", lexer.current_token.text,
-               lexGetTokenTypeName(lexer.current_token.type));
-    } while (lexer.current_token.type != RSQL_EOF);
-
-    return 0;
-}
-#endif

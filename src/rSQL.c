@@ -44,7 +44,6 @@ int main(int argc, char **argv) {
                lexGetTokenTypeName(lexer.current_token.type));
     } while (lexer.current_token.type != RSQL_EOF);
 
-    // Array di query di test
     const char *test_queries[] = {
         "CREATE TABLE users (id INT, name VARCHAR);",
         "DROP TABLE users;",
@@ -53,14 +52,11 @@ int main(int argc, char **argv) {
         "INSERT INTO users (name, age) VALUES ('Enrico', 13);",
         "INSERT INTO guys (name, age) VALUES ('Marco', 23), ('Davide', '25');",
         "CREATE DATABASE saldi;",
-        NULL // Terminatore array
-    };
+        NULL};
 
-    // Testa ogni query
     for (int i = 0; test_queries[i]; i++) {
         printf("=== Parsing: %s ===\n", test_queries[i]);
 
-        // Inizializza lexer e parser
         struct lexer_t lexer;
         lexInitialize(&lexer, test_queries[i]);
 
