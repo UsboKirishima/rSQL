@@ -60,6 +60,10 @@
 #define RSQL_UNKNOWN 0x1006
 #define RSQL_IDENTIFIER 0x1007
 
+#define RSQL_TICK 0x1008 /* '  | Tick' */
+#define RSQL_STRING_LITERAL 0x1009
+#define RSQL_NUMERIC_LITERAL 0x100a
+
 /* Keywords */
 #define CREATE_KW 0x2001
 #define DROP_KW 0x2002
@@ -81,6 +85,8 @@
 #define IN_KW 0x2012
 #define IS_KW 0x2013
 #define NULL_KW 0x2014
+#define INTO_KW 0x2015
+#define VALUES_KW 0x2016
 
 /* Maximum token text length */
 #define RSQL_MAX_TOKEN_LENGTH 64

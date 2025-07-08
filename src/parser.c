@@ -14,14 +14,11 @@
  * limitations under the License.
  */
 #include "parser.h"
-#include "db.h"
 #include "lex.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-struct ctx_t *__ctx = NULL;
 
 /* prototypes */
 struct ast_node_t *parseStatement(struct parser_t *parser);
@@ -34,6 +31,8 @@ struct ast_node_t *parseCreateTable(struct parser_t *parser);
 struct ast_node_t *parseDropTable(struct parser_t *parser);
 struct ast_node_t *parseSelect(struct parser_t *parser);
 struct ast_node_t *parseWhereClause(struct parser_t *parser);
+struct ast_node_t *parseInsert(struct parser_t *parser);
+static struct ast_node_t *parseValueList(struct parser_t *parser);
 
 /* Create a new Abstract Syntactical Tree node */
 struct ast_node_t *astCreateNode(enum ast_node_type_t type, const char *value) {
@@ -173,15 +172,47 @@ cleanup:
     return NULL;
 }
 
-/* Parse expressions and operators
- * TODO: add operators, functions, literals ...*/
 struct ast_node_t *parseExpression(struct parser_t *parser) {
+    struct ast_node_t *left = NULL;
+
     if (lexIsToken(parser->lexer, RSQL_IDENTIFIER)) {
-        return parseIndentifier(parser);
+        left = parseIndentifier(parser);
+    } else if (lexIsToken(parser->lexer, RSQL_STRING_LITERAL) ||
+               lexIsToken(parser->lexer, RSQL_NUMERIC_LITERAL)) {
+        left = astCreateNode(AST_LITERAL, lexGetTokenText(parser->lexer));
+        lexNextToken(parser->lexer);
+    } else {
+        parserError(parser, "Expected identifier or literal");
+        return NULL;
     }
 
-    parserError(parser, "Expected expression");
-    return NULL;
+    // Check for binary operator
+    if (lexIsToken(parser->lexer, RSQL_EQ_OP) ||
+        lexIsToken(parser->lexer, RSQL_NE_OP) ||
+        lexIsToken(parser->lexer, RSQL_LT_OP) ||
+        lexIsToken(parser->lexer, RSQL_GT_OP) ||
+        lexIsToken(parser->lexer, RSQL_LE_OP) ||
+        lexIsToken(parser->lexer, RSQL_GE_OP)) {
+
+        const char *op = lexGetTokenText(parser->lexer);
+        enum ast_node_type_t type = AST_OPERATOR;
+
+        struct ast_node_t *op_node = astCreateNode(type, op);
+        lexNextToken(parser->lexer);
+
+        struct ast_node_t *right = parseExpression(parser);
+        if (!right) {
+            astFreeNode(op_node);
+            astFreeNode(left);
+            return NULL;
+        }
+
+        astAddChild(op_node, left);
+        astAddChild(op_node, right);
+        return op_node;
+    }
+
+    return left;
 }
 
 /* WHERE
@@ -319,6 +350,92 @@ cleanup:
     return NULL;
 }
 
+/* Parse a list of literals (e.g. ('Marco', 24)) */
+static struct ast_node_t *parseValueList(struct parser_t *parser) {
+    struct ast_node_t *value_list = astCreateNode(AST_VALUE_LIST, NULL);
+
+    if (!parserConsume(parser, RSQL_LPAREN))
+        goto cleanup;
+
+    struct ast_node_t *value = parseExpression(parser);
+    if (!value)
+        goto cleanup;
+    astAddChild(value_list, value);
+
+    while (lexIsToken(parser->lexer, RSQL_COMMA)) {
+        lexNextToken(parser->lexer);
+        value = parseExpression(parser);
+        if (!value)
+            goto cleanup;
+        astAddChild(value_list, value);
+    }
+
+    if (!parserConsume(parser, RSQL_RPAREN))
+        goto cleanup;
+
+    return value_list;
+
+cleanup:
+    astFreeNode(value_list);
+    return NULL;
+}
+
+/* INSERT
+ * =======
+ * The INSERT weyword is used to insert valeus into SQL columsn
+ * it has a syntax like:
+ *      INSERT INTO tb_name (name, age) VALUES ('Marco', 24);
+ *
+ * we can also bulk insert more data:
+ *      INSERT INTO clienti (denomination, address, phone) VALUES
+        ("Barilla S.p.A.","Via Righi 10 Parma","3505712387"),
+        ("Parmalat S.p.A.","Via Traverso 15 Parma","3409988776");
+ */
+struct ast_node_t *parseInsert(struct parser_t *parser) {
+    struct ast_node_t *insert_node = astCreateNode(AST_INSERT, NULL);
+
+    /* consume 'INTO' */
+    if (!parserConsume(parser, INTO_KW))
+        goto cleanup;
+
+    /* parse table name */
+    struct ast_node_t *table_name = parseIndentifier(parser);
+    if (!table_name)
+        goto cleanup;
+    astAddChild(insert_node, table_name);
+
+    /* parse column list */
+    struct ast_node_t *columns = parseColumnList(parser);
+    if (!columns)
+        goto cleanup;
+    astAddChild(insert_node, columns);
+
+    /* consume VALUES keyword */
+    if (!parserConsume(parser, VALUES_KW))
+        goto cleanup;
+
+    /* parse first value list */
+    struct ast_node_t *value_list = parseValueList(parser);
+    if (!value_list)
+        goto cleanup;
+    astAddChild(insert_node, value_list);
+
+    /* optionally parse more value lists (bulk insert) */
+    while (lexIsToken(parser->lexer, RSQL_COMMA)) {
+        lexNextToken(parser->lexer);
+        value_list = parseValueList(parser);
+        if (!value_list)
+            goto cleanup;
+        astAddChild(insert_node, value_list);
+    }
+
+    return insert_node;
+
+cleanup:
+    astFreeNode(insert_node);
+    return NULL;
+}
+
 /* Parse a full SQL statement */
 struct ast_node_t *parseStatement(struct parser_t *parser) {
     if (parser->has_error)
@@ -336,6 +453,10 @@ struct ast_node_t *parseStatement(struct parser_t *parser) {
     case SELECT_KW:
         lexNextToken(parser->lexer);
         return parseSelect(parser);
+
+    case INSERT_KW:
+        lexNextToken(parser->lexer);
+        return parseInsert(parser);
 
     default:
         parserError(parser, "Unexpected token");
@@ -400,6 +521,12 @@ void astPrintNode(struct ast_node_t *node, int indent) {
         break;
     case AST_SELECT:
         printf("SELECT\n");
+        break;
+    case AST_INSERT:
+        printf("INSERT\n");
+        break;
+    case AST_VALUE_LIST:
+        printf("VALUE LIST\n");
         break;
     case AST_IDENTIFIER:
         printf("IDENTIFIER: %s\n", node->value ? node->value : "NULL");

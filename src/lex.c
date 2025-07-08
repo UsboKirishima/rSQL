@@ -41,6 +41,8 @@ static const keyword_entry_t keywords[] = {
     {"IN", IN_KW},
     {"IS", IS_KW},
     {"NULL", NULL_KW},
+    {"INTO", INTO_KW},
+    {"VALUES", VALUES_KW},
     {NULL, 0} /* Sentinel */
 };
 
@@ -123,6 +125,52 @@ void lexParseIdentifier(struct lexer_t *lexer) {
     lexer->current_token.type = lexLookupKeyword(lexer->current_token.text);
 }
 
+void lexParseNumber(struct lexer_t *lexer) {
+    size_t start = lexer->pos;
+    int dot_seen = 0;
+
+    while (isdigit(lexer->input[lexer->pos]) ||
+           (!dot_seen && lexer->input[lexer->pos] == '.')) {
+        if (lexer->input[lexer->pos] == '.')
+            dot_seen = 1;
+        lexer->pos++;
+    }
+
+    size_t len = lexer->pos - start;
+    if (len >= sizeof(lexer->current_token.text))
+        len = sizeof(lexer->current_token.text) - 1;
+
+    strncpy(lexer->current_token.text, lexer->input + start, len);
+    lexer->current_token.text[len] = '\0';
+
+    lexer->current_token.type = RSQL_NUMERIC_LITERAL;
+}
+
+void lexParseString(struct lexer_t *lexer) {
+    lexer->pos++; // Skip initial quote
+    size_t start = lexer->pos;
+
+    while (lexer->input[lexer->pos] != '\0' &&
+           lexer->input[lexer->pos] != '\'') {
+        lexer->pos++;
+    }
+
+    size_t len = lexer->pos - start;
+    if (len >= sizeof(lexer->current_token.text))
+        len = sizeof(lexer->current_token.text) - 1;
+
+    strncpy(lexer->current_token.text, lexer->input + start, len);
+    lexer->current_token.text[len] = '\0';
+
+    lexer->current_token.type = RSQL_STRING_LITERAL;
+
+    if (lexer->input[lexer->pos] == '\'') {
+        lexer->pos++; // Skip closing quote
+    } else {
+        // Unterminated string — could set RSQL_UNKNOWN or flag an error
+    }
+}
+
 void lexNextToken(struct lexer_t *lexer) {
     lexSkipWhiteSpace(lexer);
     char c = lexer->input[lexer->pos];
@@ -141,6 +189,18 @@ void lexNextToken(struct lexer_t *lexer) {
 
     /* Try to match single character tokens */
     if (lexMatchSingleChar(lexer)) {
+        return;
+    }
+
+    /* String literal */
+    if (c == '\'') {
+        lexParseString(lexer);
+        return;
+    }
+
+    /* Numeric literal */
+    if (isdigit(c)) {
+        lexParseNumber(lexer);
         return;
     }
 
@@ -188,6 +248,10 @@ const char *lexGetTokenTypeName(int type) {
         return "DROP";
     case DELETE_KW:
         return "DELETE";
+    case INTO_KW:
+        return "INTO";
+    case VALUES_KW:
+        return "VALUES";
     case SELECT_KW:
         return "SELECT";
     case RSQL_ET_OP:
@@ -210,6 +274,10 @@ const char *lexGetTokenTypeName(int type) {
         return "MULTIPLY";
     case RSQL_DIV_OP:
         return "DIVIDE";
+    case RSQL_STRING_LITERAL:
+        return "STRING_LITERAL";
+    case RSQL_NUMERIC_LITERAL:
+        return "NUMERIC_LITERAL";
     default:
         return "UNKNOWN_TYPE";
     }

@@ -19,7 +19,10 @@ enum ast_node_type_t {
     AST_EXPRESSION,
     AST_BINARY_OP,
     AST_LITERAL,
-    AST_TABLE_REF
+    AST_TABLE_REF,
+    AST_VALUE_LIST,
+    AST_OPERATOR,
+    AST_VALUES
 };
 
 /* AST Node Structure is a node used by parser to rapresent the
@@ -64,6 +67,7 @@ struct ast_node_t *parseCreateTable(struct parser_t *parser);
 struct ast_node_t *parseDropTable(struct parser_t *parser);
 struct ast_node_t *parseSelect(struct parser_t *parser);
 struct ast_node_t *parseWhereClause(struct parser_t *parser);
+struct ast_node_t *parseInsert(struct parser_t *parser);
 
 struct parser_t *parserCreate(struct lexer_t *lexer);
 void parserFree(struct parser_t *parser);

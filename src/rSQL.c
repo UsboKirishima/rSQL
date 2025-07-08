@@ -46,8 +46,12 @@ int main(int argc, char **argv) {
 
     // Array di query di test
     const char *test_queries[] = {
-        "CREATE TABLE users (id INT, name VARCHAR);", "DROP TABLE users;",
-        "SELECT * FROM users;", "SELECT id, name FROM users WHERE id;",
+        "CREATE TABLE users (id INT, name VARCHAR);",
+        "DROP TABLE users;",
+        "SELECT * FROM users;",
+        "SELECT id, name FROM users WHERE id;",
+        "INSERT INTO users (name, age) VALUES ('Enrico', 13);",
+        "INSERT INTO guys (name, age) VALUES ('Marco', 23), ('Davide', '25');",
         NULL // Terminatore array
     };
 
