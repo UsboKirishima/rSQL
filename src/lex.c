@@ -15,11 +15,10 @@
  */
 #include "lex.h"
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
 #include <ctype.h>
-
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 static const keyword_entry_t keywords[] = {
     {"CREATE", CREATE_KW},
@@ -46,24 +45,16 @@ static const keyword_entry_t keywords[] = {
 };
 
 static const single_char_token_t single_char_tokens[] = {
-    {',', RSQL_COMMA, ","},
-    {';', RSQL_SEMICOLON, ";"},
-    {'(', RSQL_LPAREN, "("},
-    {')', RSQL_RPAREN, ")"},
-    {'+', RSQL_ADD_OP, "+"},
-    {'-', RSQL_SUB_OP, "-"},
-    {'*', RSQL_MUL_OP, "*"},
-    {'/', RSQL_DIV_OP, "/"},
+    {',', RSQL_COMMA, ","},  {';', RSQL_SEMICOLON, ";"},
+    {'(', RSQL_LPAREN, "("}, {')', RSQL_RPAREN, ")"},
+    {'+', RSQL_ADD_OP, "+"}, {'-', RSQL_SUB_OP, "-"},
+    {'*', RSQL_MUL_OP, "*"}, {'/', RSQL_DIV_OP, "/"},
     {'\0', 0, NULL} /* Sentinel */
 };
 
 static const multi_char_op_t multi_char_ops[] = {
-    {">=", RSQL_GE_OP},
-    {"<=", RSQL_LE_OP},
-    {"!=", RSQL_NE_OP},
-    {"=", RSQL_ET_OP},
-    {">", RSQL_GT_OP},
-    {"<", RSQL_LT_OP},
+    {">=", RSQL_GE_OP}, {"<=", RSQL_LE_OP}, {"!=", RSQL_NE_OP},
+    {"=", RSQL_ET_OP},  {">", RSQL_GT_OP},  {"<", RSQL_LT_OP},
     {NULL, 0} /* Sentinel */
 };
 
@@ -73,7 +64,7 @@ void lexSkipWhiteSpace(struct lexer_t *lexer) {
     }
 }
 
-int lexLookupKeyword(const char* text) {
+int lexLookupKeyword(const char *text) {
     for (int i = 0; keywords[i].text != NULL; i++) {
         if (strcasecmp(text, keywords[i].text) == 0) {
             return keywords[i].type;
@@ -87,7 +78,7 @@ int lexMatchOperator(struct lexer_t *lexer) {
     for (int i = 0; multi_char_ops[i].text != NULL; i++) {
         const char *op = multi_char_ops[i].text;
         size_t len = strlen(op);
-        
+
         if (strncmp(lexer->input + lexer->pos, op, len) == 0) {
             strncpy(lexer->current_token.text, op, len);
             lexer->current_token.text[len] = '\0';
@@ -101,7 +92,7 @@ int lexMatchOperator(struct lexer_t *lexer) {
 
 int lexMatchSingleChar(struct lexer_t *lexer) {
     char c = lexer->input[lexer->pos];
-    
+
     for (int i = 0; single_char_tokens[i].text != NULL; i++) {
         if (c == single_char_tokens[i].ch) {
             lexer->current_token.type = single_char_tokens[i].type;
@@ -115,18 +106,19 @@ int lexMatchSingleChar(struct lexer_t *lexer) {
 
 void lexParseIdentifier(struct lexer_t *lexer) {
     size_t start = lexer->pos;
-    
-    while (isalnum(lexer->input[lexer->pos]) || lexer->input[lexer->pos] == '_') {
+
+    while (isalnum(lexer->input[lexer->pos]) ||
+           lexer->input[lexer->pos] == '_') {
         lexer->pos++;
     }
-    
+
     size_t len = lexer->pos - start;
     if (len >= sizeof(lexer->current_token.text))
         len = sizeof(lexer->current_token.text) - 1;
-    
+
     strncpy(lexer->current_token.text, lexer->input + start, len);
     lexer->current_token.text[len] = '\0';
-    
+
     /* Check if it's a keyword */
     lexer->current_token.type = lexLookupKeyword(lexer->current_token.text);
 }
@@ -174,30 +166,52 @@ void lexInitialize(struct lexer_t *lexer, const char *input) {
 }
 
 /* Utility function to get token type name for debugging */
-const char* lexGetTokenTypeName(int type) {
+const char *lexGetTokenTypeName(int type) {
     switch (type) {
-        case RSQL_EOF: return "EOF";
-        case RSQL_COMMA: return "COMMA";
-        case RSQL_SEMICOLON: return "SEMICOLON";
-        case RSQL_LPAREN: return "LPAREN";
-        case RSQL_RPAREN: return "RPAREN";
-        case RSQL_IDENTIFIER: return "IDENTIFIER";
-        case RSQL_UNKNOWN: return "UNKNOWN";
-        case CREATE_KW: return "CREATE";
-        case DROP_KW: return "DROP";
-        case DELETE_KW: return "DELETE";
-        case SELECT_KW: return "SELECT";
-        case RSQL_ET_OP: return "EQUAL";
-        case RSQL_NE_OP: return "NOT_EQUAL";
-        case RSQL_GT_OP: return "GREATER";
-        case RSQL_GE_OP: return "GREATER_EQUAL";
-        case RSQL_LT_OP: return "LESS";
-        case RSQL_LE_OP: return "LESS_EQUAL";
-        case RSQL_ADD_OP: return "PLUS";
-        case RSQL_SUB_OP: return "MINUS";
-        case RSQL_MUL_OP: return "MULTIPLY";
-        case RSQL_DIV_OP: return "DIVIDE";
-        default: return "UNKNOWN_TYPE";
+    case RSQL_EOF:
+        return "EOF";
+    case RSQL_COMMA:
+        return "COMMA";
+    case RSQL_SEMICOLON:
+        return "SEMICOLON";
+    case RSQL_LPAREN:
+        return "LPAREN";
+    case RSQL_RPAREN:
+        return "RPAREN";
+    case RSQL_IDENTIFIER:
+        return "IDENTIFIER";
+    case RSQL_UNKNOWN:
+        return "UNKNOWN";
+    case CREATE_KW:
+        return "CREATE";
+    case DROP_KW:
+        return "DROP";
+    case DELETE_KW:
+        return "DELETE";
+    case SELECT_KW:
+        return "SELECT";
+    case RSQL_ET_OP:
+        return "EQUAL";
+    case RSQL_NE_OP:
+        return "NOT_EQUAL";
+    case RSQL_GT_OP:
+        return "GREATER";
+    case RSQL_GE_OP:
+        return "GREATER_EQUAL";
+    case RSQL_LT_OP:
+        return "LESS";
+    case RSQL_LE_OP:
+        return "LESS_EQUAL";
+    case RSQL_ADD_OP:
+        return "PLUS";
+    case RSQL_SUB_OP:
+        return "MINUS";
+    case RSQL_MUL_OP:
+        return "MULTIPLY";
+    case RSQL_DIV_OP:
+        return "DIVIDE";
+    default:
+        return "UNKNOWN_TYPE";
     }
 }
 
@@ -205,19 +219,19 @@ const char* lexGetTokenTypeName(int type) {
 #ifdef TEST_LEXER
 int main() {
     struct lexer_t lexer;
-    const char *test_input = "CREATE TABLE users (id >= 10 AND name != 'test');";
-    
+    const char *test_input =
+        "CREATE TABLE users (id >= 10 AND name != 'test');";
+
     lexInitialize(&lexer, test_input);
-    
+
     printf("Tokenizing: %s\n\n", test_input);
-    
+
     do {
         lexNextToken(&lexer);
-        printf("Token: %-15s Type: %s\n", 
-               lexer.current_token.text, 
+        printf("Token: %-15s Type: %s\n", lexer.current_token.text,
                lexGetTokenTypeName(lexer.current_token.type));
     } while (lexer.current_token.type != RSQL_EOF);
-    
+
     return 0;
 }
 #endif

@@ -28,35 +28,36 @@
 
 /* Timestamp */
 #define LOG_TIMESTAMP()                                                        \
-  do {                                                                         \
-    time_t t = time(NULL);                                                     \
-    struct tm *tm_info = localtime(&t);                                        \
-    char buf[20];                                                              \
-    strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", tm_info);                  \
-    printf("[%s] ", buf);                                                      \
-  } while (0)
+    do {                                                                       \
+        time_t t = time(NULL);                                                 \
+        struct tm *tm_info = localtime(&t);                                    \
+        char buf[20];                                                          \
+        strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", tm_info);              \
+        printf("[%s] ", buf);                                                  \
+    } while (0)
 
 #define LOG_INFO(msg, ...)                                                     \
-  do {                                                                         \
-    printf(COLOR_GREEN "[INFO] " COLOR_RESET msg "\n", ##__VA_ARGS__);         \
-  } while (0)
+    do {                                                                       \
+        printf(COLOR_GREEN "[INFO] " COLOR_RESET msg "\n", ##__VA_ARGS__);     \
+    } while (0)
 
 #define LOG_WARN(msg, ...)                                                     \
-  do {                                                                         \
-    LOG_TIMESTAMP();                                                           \
-    printf(COLOR_YELLOW "[WARN] " COLOR_RESET msg "\n", ##__VA_ARGS__);        \
-  } while (0)
+    do {                                                                       \
+        LOG_TIMESTAMP();                                                       \
+        printf(COLOR_YELLOW "[WARN] " COLOR_RESET msg "\n", ##__VA_ARGS__);    \
+    } while (0)
 
 #define LOG_ERROR(msg, ...)                                                    \
-  do {                                                                         \
-    LOG_TIMESTAMP();                                                           \
-    fprintf(stderr, COLOR_RED "[ERROR] " COLOR_RESET msg "\n", ##__VA_ARGS__); \
-  } while (0)
+    do {                                                                       \
+        LOG_TIMESTAMP();                                                       \
+        fprintf(stderr, COLOR_RED "[ERROR] " COLOR_RESET msg "\n",             \
+                ##__VA_ARGS__);                                                \
+    } while (0)
 
 #define LOG_DEBUG(msg, ...)                                                    \
-  do {                                                                         \
-    LOG_TIMESTAMP();                                                           \
-    printf(COLOR_BLUE "[DEBUG] " COLOR_RESET msg "\n", ##__VA_ARGS__);         \
-  } while (0)
+    do {                                                                       \
+        LOG_TIMESTAMP();                                                       \
+        printf(COLOR_BLUE "[DEBUG] " COLOR_RESET msg "\n", ##__VA_ARGS__);     \
+    } while (0)
 
 #endif /* _LOGS_H */

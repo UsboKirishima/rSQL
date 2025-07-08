@@ -21,11 +21,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define MAX_TABLE_NUM       64
-#define MAX_COLUMNS_NUM     64
+#define MAX_TABLE_NUM 64
+#define MAX_COLUMNS_NUM 64
 #define MAX_CONSTRAINTS_NUM 4
-#define MAX_ROWS_NUM        2048
-#define MAX_DB_NUM          32
+#define MAX_ROWS_NUM 2048
+#define MAX_DB_NUM 32
 
 struct column_t {
     char name[64];
@@ -69,8 +69,9 @@ void dbReleaseTables(struct database_t *db);
 int dbDelete(struct ctx_t *ctx, struct database_t *db);
 struct table_t *dbTableNew(struct database_t *db, const char table_name[64]);
 int dbTableDelete(struct database_t *db, struct table_t *table);
-struct column_t *dbColumnCreate(struct table_t *table, const char col_name[64], 
-    int col_type, const int constraints[MAX_CONSTRAINTS_NUM]);
+struct column_t *dbColumnCreate(struct table_t *table, const char col_name[64],
+                                int col_type,
+                                const int constraints[MAX_CONSTRAINTS_NUM]);
 int dbColumnDelete(struct table_t *table, struct column_t *col);
 struct row_t *dbRowNew(struct table_t *table);
 int dbRowDelete(struct table_t *table, struct row_t *row);

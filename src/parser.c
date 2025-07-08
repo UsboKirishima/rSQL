@@ -16,13 +16,24 @@
 #include "parser.h"
 #include "db.h"
 #include "lex.h"
-#include "logs.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 struct ctx_t *__ctx = NULL;
+
+/* prototypes */
+struct ast_node_t *parseStatement(struct parser_t *parser);
+struct ast_node_t *parseIndentifier(struct parser_t *parser);
+struct ast_node_t *parseColumnDef(struct parser_t *parser);
+struct ast_node_t *parseColumnDef(struct parser_t *parser);
+struct ast_node_t *parseExpression(struct parser_t *parser);
+struct ast_node_t *parseIndentifier(struct parser_t *parser);
+struct ast_node_t *parseCreateTable(struct parser_t *parser);
+struct ast_node_t *parseDropTable(struct parser_t *parser);
+struct ast_node_t *parseSelect(struct parser_t *parser);
+struct ast_node_t *parseWhereClause(struct parser_t *parser);
 
 /* Create a new Abstract Syntactical Tree node */
 struct ast_node_t *astCreateNode(enum ast_node_type_t type, const char *value) {
@@ -101,11 +112,6 @@ int parserConsume(struct parser_t *parser, int expected_type) {
     lexNextToken(parser->lexer);
     return 1;
 }
-
-/* prototypes */
-struct ast_node_t *parseIndentifier(struct parser_t *parser);
-struct ast_node_t *parseColumnDef(struct parser_t *parser);
-struct ast_node_t *parseColumnDef(struct parser_t *parser);
 
 struct ast_node_t *parseIndentifier(struct parser_t *parser) {
     if (!parserExpect(parser, RSQL_IDENTIFIER))
@@ -419,20 +425,3 @@ void astPrintNode(struct ast_node_t *node, int indent) {
         astPrintNode(node->children[i], indent + 1);
     }
 }
-
-/* This function is used to check if the global context variable
- * exists and in case to create it and parse errors and logs. */
-struct ctx_t *rSQL_getCtx(void) {
-    /* In case of ctx already exists returns it */
-    if (__ctx)
-        return __ctx;
-
-    __ctx = dbCreateCtx();
-
-    if (!__ctx) {
-        LOG_ERROR("Failed to create database context.");
-        exit(EXIT_FAILURE);
-    }
-
-    return __ctx;
-};
