@@ -6,6 +6,7 @@
 /* AST Node Types */
 enum ast_node_type_t {
     AST_STATEMENT,
+    AST_CREATE_DATABASE,
     AST_CREATE_TABLE,
     AST_DROP_TABLE,
     AST_SELECT,

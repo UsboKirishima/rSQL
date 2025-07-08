@@ -52,6 +52,7 @@ int main(int argc, char **argv) {
         "SELECT id, name FROM users WHERE id;",
         "INSERT INTO users (name, age) VALUES ('Enrico', 13);",
         "INSERT INTO guys (name, age) VALUES ('Marco', 23), ('Davide', '25');",
+        "CREATE DATABASE saldi;",
         NULL // Terminatore array
     };
 

@@ -27,6 +27,7 @@ struct ast_node_t *parseColumnDef(struct parser_t *parser);
 struct ast_node_t *parseColumnDef(struct parser_t *parser);
 struct ast_node_t *parseExpression(struct parser_t *parser);
 struct ast_node_t *parseIndentifier(struct parser_t *parser);
+struct ast_node_t *parseCreateDatabase(struct parser_t *parser);
 struct ast_node_t *parseCreateTable(struct parser_t *parser);
 struct ast_node_t *parseDropTable(struct parser_t *parser);
 struct ast_node_t *parseSelect(struct parser_t *parser);
@@ -241,6 +242,26 @@ cleanup:
     return NULL;
 }
 
+/* Database creation 'CREATE DATABASE db_name;' */
+struct ast_node_t *parseCreateDatabase(struct parser_t *parser) {
+    struct ast_node_t *db_node = astCreateNode(AST_CREATE_DATABASE, NULL);
+
+    /* consume 'DATABASE' kw */
+    if (!parserConsume(parser, DATABASE_KW))
+        goto cleanup;
+
+    struct ast_node_t *db_name = parseIndentifier(parser);
+    if (!db_name)
+        goto cleanup;
+    astAddChild(db_node, db_name);
+
+    return db_node;
+
+cleanup:
+    astFreeNode(db_node);
+    return NULL;
+}
+
 /* Table creation parser e.g. 'CREATE TABLE tb_name (id INT, name TEXT);' */
 struct ast_node_t *parseCreateTable(struct parser_t *parser) {
     struct ast_node_t *create_node = astCreateNode(AST_CREATE_TABLE, NULL);
@@ -444,7 +465,12 @@ struct ast_node_t *parseStatement(struct parser_t *parser) {
     switch (lexGetTokenType(parser->lexer)) {
     case CREATE_KW:
         lexNextToken(parser->lexer);
-        return parseCreateTable(parser);
+        int is_table = lexIsToken(parser->lexer, TABLE_KW);
+        int is_database = lexIsToken(parser->lexer, DATABASE_KW);
+
+        return is_database ? parseCreateDatabase(parser)
+               : is_table  ? parseCreateTable(parser)
+                           : NULL;
 
     case DROP_KW:
         lexNextToken(parser->lexer);
@@ -515,6 +541,9 @@ void astPrintNode(struct ast_node_t *node, int indent) {
     switch (node->type) {
     case AST_CREATE_TABLE:
         printf("CREATE TABLE\n");
+        break;
+    case AST_CREATE_DATABASE:
+        printf("CRATE DATABASE\n");
         break;
     case AST_DROP_TABLE:
         printf("DROP TABLE\n");
