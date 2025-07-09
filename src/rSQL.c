@@ -16,8 +16,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "lex.h"
-#include "parser.h"
+#include "eval.h"
 
 /* Runs main CLI getting the line buffer */
 static void rSQL_runConsole(void) {
@@ -27,9 +26,15 @@ static void rSQL_runConsole(void) {
     if (fgets(buffer, sizeof(buffer), stdin)) {
         buffer[strcspn(buffer, "\n")] = 0;
     }
+
+    evaluator_t *eval = evCreateEvaluator(buffer);
+    evEvaluateNode(eval->current_node);
+    printf("\n");
 }
 
 int main(int argc, char **argv) {
+
+    /*
     struct lexer_t lexer;
     const char *test_input =
         "CREATE TABLE users (id >= 10 AND name != 'test');";
@@ -76,6 +81,8 @@ int main(int argc, char **argv) {
     }
 
     return 0;
+
+    */
 
     while (1) {
         rSQL_runConsole();

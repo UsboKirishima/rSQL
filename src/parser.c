@@ -465,12 +465,11 @@ struct ast_node_t *parseStatement(struct parser_t *parser) {
     switch (lexGetTokenType(parser->lexer)) {
     case CREATE_KW:
         lexNextToken(parser->lexer);
-        int is_table = lexIsToken(parser->lexer, TABLE_KW);
-        int is_database = lexIsToken(parser->lexer, DATABASE_KW);
+        int current_tok = lexGetTokenType(parser->lexer);
 
-        return is_database ? parseCreateDatabase(parser)
-               : is_table  ? parseCreateTable(parser)
-                           : NULL;
+        return current_tok == DATABASE_KW ? parseCreateDatabase(parser)
+               : current_tok == TABLE_KW  ? parseCreateTable(parser)
+                                          : NULL;
 
     case DROP_KW:
         lexNextToken(parser->lexer);
